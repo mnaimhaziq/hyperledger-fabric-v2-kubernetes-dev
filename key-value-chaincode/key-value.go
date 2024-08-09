@@ -96,13 +96,21 @@ func (sc *KeyValueContract) Read(ctx contractapi.TransactionContextInterface, id
 	err = json.Unmarshal(assetJSON, &asset)
 
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	return &asset, nil
+
+	// Convert asset to JSON string
+	assetJSONString, err := json.Marshal(asset)
+	if err != nil {
+		return "", err
+	}
+
+	return string(assetJSONString), nil
 }
 
+
 // DeleteAsset deletes an given asset from the world state.
-func (sc *SmartContract) Delete(ctx contractapi.TransactionContextInterface, id string) error {
+func (sc *KeyValueContract) Delete(ctx contractapi.TransactionContextInterface, id string) error {
 	existing, err := ctx.GetStub().GetState(id)
 
 	if err != nil {
@@ -117,7 +125,7 @@ func (sc *SmartContract) Delete(ctx contractapi.TransactionContextInterface, id 
 }
 
 // GetAllAssets returns all assets found in world state
-func (sc *SmartContract) GetAllAssets(ctx contractapi.TransactionContextInterface) ([]*Asset, error) {
+func (sc *KeyValueContract) GetAllAssets(ctx contractapi.TransactionContextInterface) ([]*Asset, error) {
 	// range query with empty string for startKey and endKey does an
 	// open-ended query of all assets in the chaincode namespace.
 	resultsIterator, err := ctx.GetStub().GetStateByRange("", "")
