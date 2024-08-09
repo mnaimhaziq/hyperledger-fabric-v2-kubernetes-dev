@@ -1,4 +1,4 @@
-module github.com/edgeflare/hyperledger-fabric-v2-kubernetes-dev/key-value-chaincode
+module github.com/mnaimhaziq/hyperledger-fabric-v2-kubernetes-dev/key-value-chaincode
 
 go 1.20
 
