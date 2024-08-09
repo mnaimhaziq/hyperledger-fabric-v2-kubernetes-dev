@@ -30,7 +30,7 @@ func (sc *KeyValueContract) Create(ctx contractapi.TransactionContextInterface, 
 	}
 
 	if existing != nil {
-		return fmt.Errorf("Cannot create world state pair with key %s. Already exists", key)
+		return fmt.Errorf("Cannot create world state pair with key %s. Already exists", id)
 	}
 
 	asset := Asset{
