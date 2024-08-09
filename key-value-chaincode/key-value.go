@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/json" // Add this import
 	"errors"
 	"fmt"
 
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 )
+
 
 // KeyValueContract contract for handling writing and reading from the world state
 type KeyValueContract struct {
