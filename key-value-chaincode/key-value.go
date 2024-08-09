@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -40,12 +39,12 @@ func (sc *KeyValueContract) Create(ctx contractapi.TransactionContextInterface, 
 		Owner:          owner,
 		AppraisedValue: appraisedValue,
 	}
-
-	err = ctx.GetStub().PutState(id, assetJSON)
+	assetJSON, err := json.Marshal(asset)
 
 	if err != nil {
 		return errors.New("Unable to interact with world state")
 	}
+	err = ctx.GetStub().PutState(id, assetJSON)
 
 	return nil
 }
