@@ -1,4 +1,4 @@
-module github.com/hyperledger/fabric-samples/chaincode/MiTrace_Generic
+module github.com/mnaimhaziq/hyperledger-fabric-v2-kubernetes-dev/Mitrace-Generic
 
 go 1.12
 
