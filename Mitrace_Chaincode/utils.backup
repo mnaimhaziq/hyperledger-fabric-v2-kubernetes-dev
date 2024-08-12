@@ -1,0 +1,630 @@
+package main
+
+// IMPORTANT UTILITIES! DO NOT DELETE!
+import (
+	"bytes"
+	"crypto/x509"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/hyperledger/fabric-chaincode-go/pkg/cid"
+	"github.com/hyperledger/fabric-chaincode-go/shim"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
+)
+
+// ERROR CODES
+const errAEOIDReq 			= "\"ERR-AEO1001\"" // Error code for AEO ID required
+const errSSMIDReq 			= "\"ERR-AEO1002\"" // Error code for SSM ID required
+const errAEOCOMPNAMEReq 	= "\"ERR-AEO1003\"" // Error code for AEO Company Name required
+const errAEOCOMPADDReq 		= "\"ERR-AEO1004\"" // Error code for AEO Company Address required
+const errAEOSTATUSReq 		= "\"ERR-AEO1005\"" // Error code for AEO Status required
+const errAEOCREATEDDATEReq 	= "\"ERR-AEO1006\"" // Error code for AEO Created Date required
+const errAEOCREATEDBYReq 	= "\"ERR-AEO1007\"" // Error code for AEO Created By required
+const errAEOIDExist 		= "\"ERR-AEO1001A\"" // Error code for AEO ID exist
+const errAEOIDNotExist 		= "\"ERR-AEO1001B\"" // Error code for AEO ID does not exist
+const errSSMIDNotExist 		= "\"ERR-AEO1002B\"" // Error code for SSM ID does not exist
+
+const errPMTIDReq 				= "\"ERR-PMT1001\"" // Error code for Permit ID required
+const errPMTCLASSReq 			= "\"ERR-PMT1002\"" // Error code for Permit Class required
+const errACTTYPEReq 			= "\"ERR-PMT1003\"" // Error code for Activity Type required
+const errPMTTYPEReq 			= "\"ERR-PMT1004\"" // Error code for Permit Type required
+const errICPIDReq 				= "\"ERR-PMT1005\"" // Error code for ICP ID required
+const errICPEXPIRYReq 			= "\"ERR-PMT1006\"" // Error code for ICP Expiry Date required
+const errPMTEXPIRYReq 			= "\"ERR-PMT1007\"" // Error code for Permit Expiry Date required
+const errFINALDESTReq 			= "\"ERR-PMT1008\"" // Error code for Final Destination required
+const errINCOTERMSReq 			= "\"ERR-PMT1009\"" // Error code for Incoterms required
+const errEXPORTERNAMEReq 		= "\"ERR-PMT10010\"" // Error code for Exporter Name required
+const errIMPORTERNAMEReq 		= "\"ERR-PMT10011\"" // Error code for Importer Name required
+const errLOGISTICOPERATORReq 	= "\"ERR-PMT10012\"" // Error code for Logistic Operator required
+const errITEMDetailsReq 		= "\"ERR-PMT10013\"" // Error code for Item No required
+const errORIGINCOUNTRYReq 		= "\"ERR-PMT10014\"" // Error code for Origin Country required
+const errITEMCLASSReq 			= "\"ERR-PMT10015\"" // Error code for Item Classifiation required
+const errHSCODEReq 				= "\"ERR-PMT10016\"" // Error code for HS Code required
+const errITEMVALUEMYRReq 		= "\"ERR-PMT10017\"" // Error code for Item Value (MYR) required
+const errITEMVALUEOTHERSReq 	= "\"ERR-PMT10018\"" // Error code for Item Value (Other Currency) required
+const errITEMQUANTITYReq 		= "\"ERR-PMT10019\"" // Error code for Item Quantity required
+const errITEMBALANCEReq 		= "\"ERR-PMT10020\"" // Error code for Item Balance required
+const errPMTSTATUSReq 			= "\"ERR-PMT10021\"" // Error code for Permit Status required
+const errPMTCREATEDDATEReq 		= "\"ERR-PMT10022\"" // Error code for Permit Created Date required
+const errPMTCREATEDBYReq 		= "\"ERR-PMT10023\"" // Error code for Permit Created By required
+const errPMTIDExist 			= "\"ERR-PMT1001A\"" // Error code for Permit ID exist
+const errPMTIDNotExist 			= "\"ERR-PMT1001B\"" // Error code for Permit ID no exist
+
+const errSAIDReq 		= "\"ERR-SA1001\"" //Error code for Sanity ID required
+const errSADATETIMEReq 	= "\"ERR-SA1002\"" // Error code for DateTime required
+const errSACOUNTERReq 	= "\"ERR-SA1003\"" // Error code for Sanity Counter required
+const errSAIDExist 		= "\"ERR-SA1001A\"" // Error code for Sanity ID exist
+const errSAIDNotExist 	= "\"ERR-SA1001B\"" // Error code for Sanity ID not exist
+
+// ERROR JSON MESSAGE
+const errAEOIDReqMSG			= "{\"code\":" + 	errAEOIDReq 			+	",\"message\":\"AEO ID Required !\"}"
+const errSSMIDReqMSG 			= "{\"code\":" + 	errSSMIDReq 			+	",\"message\":\"SSM ID Required !\"}"
+const errAEOCOMPNAMEReqMSG 		= "{\"code\":" + 	errAEOCOMPNAMEReq		+	",\"message\":\"AEO Company Name Required !\"}"
+const errAEOCOMPADDReqMSG 		= "{\"code\":" + 	errAEOCOMPADDReq 		+	",\"message\":\"AEO Company Address Required !\"}"
+const errAEOSTATUSReqMSG 		= "{\"code\":" + 	errAEOSTATUSReq 		+	",\"message\":\"AEO Status Required !\"}"
+const errAEOCREATEDDATEReqMSG 	= "{\"code\":" + 	errAEOCREATEDDATEReq 	+	",\"message\":\"Created Date Required !\"}"
+const errAEOCREATEDBYReqMSG 	= "{\"code\":" + 	errAEOCREATEDBYReq		+	",\"message\":\"Created By Required !\"}"
+const errAEOIDExistMSG			= "{\"code\":" + 	errAEOIDExist 			+	",\"message\":\"AEO ID already exist !\"}"
+const errAEOIDNotExistMSG 		= "{\"code\":" + 	errAEOIDNotExist 		+	",\"message\":\"AEO ID does not exist !\"}"
+const errSSMIDNotExistMSG 		= "{\"code\":" + 	errSSMIDNotExist 		+	",\"message\":\"SSM ID does not exist !\"}"
+
+const errPMTIDReqMSG 			= "{\"code\":" +	errPMTIDReq 			+	",\"message\":\"Permit ID Required !\"}"
+const errPMTCLASSReqMSG 		= "{\"code\":" +	errPMTCLASSReq 			+	",\"message\":\"Permit Class Required !\"}"
+const errACTTYPEReqMSG 			= "{\"code\":" +	errACTTYPEReq 			+	",\"message\":\"Activity Type Required !\"}"
+const errPMTTYPEReqMSG 			= "{\"code\":" +	errPMTTYPEReq 			+	",\"message\":\"Permit Type Required !\"}"
+const errICPIDReqMSG 			= "{\"code\":" +	errICPIDReq 			+	",\"message\":\"ICP ID Required !\"}"
+const errICPEXPIRYReqMSG 		= "{\"code\":" +	errICPEXPIRYReq 		+	",\"message\":\"ICP Expiry Date Required !\"}"
+const errPMTEXPIRYReqMSG 		= "{\"code\":" +	errPMTEXPIRYReq 		+	",\"message\":\"Permit Expiry Date Required !\"}"
+const errFINALDESTReqMSG		= "{\"code\":" +	errFINALDESTReq 		+	",\"message\":\"Destination Country Required !\"}"
+const errINCOTERMSReqMSG 		= "{\"code\":" +	errINCOTERMSReq 		+	",\"message\":\"Incoterms Required !\"}"
+const errEXPORTERNAMEReqMSG 	= "{\"code\":" +	errEXPORTERNAMEReq		+	",\"message\":\"Exporter Name/AEO Name Required !\"}"
+const errIMPORTERNAMEReqMSG		= "{\"code\":" +	errIMPORTERNAMEReq		+	",\"message\":\"Importer Name Required !\"}"
+const errLOGISTICOPERATORReqMSG = "{\"code\":" +	errLOGISTICOPERATORReq	+	",\"message\":\"Logistic Operator Required !\"}"
+const errITEMDetailsReqMSG 		= "{\"code\":" +	errITEMDetailsReq 			+	",\"message\":\"Item Details Required !\"}"
+// const errORIGINCOUNTRYReqMSG 	= "{\"code\":" +	errORIGINCOUNTRYReq 	+	",\"message\":\"Origin Country Required !\"}"
+// const errITEMCLASSReqMSG 		= "{\"code\":" +	errITEMCLASSReq 		+	",\"message\":\"Item Classification Required !\"}"
+// const errHSCODEReqMSG 			= "{\"code\":" +	errHSCODEReq 			+	",\"message\":\"HS Code Required !\"}"
+// const errITEMVALUEMYRReqMSG 	= "{\"code\":" +	errITEMVALUEMYRReq 		+	",\"message\":\"Item Value (MYR) Required !\"}"
+// const errITEMVALUEOTHERSReqMSG 	= "{\"code\":" +	errITEMVALUEOTHERSReq	+	",\"message\":\"Item Value (Other Currency) Required !\"}"
+// const errITEMQUANTITYReqMSG 	= "{\"code\":" +	errITEMQUANTITYReq 		+	",\"message\":\"Item Quantity Required !\"}"
+// const errITEMBALANCEReqMSG 		= "{\"code\":" +	errITEMBALANCEReq 		+	",\"message\":\"Item Balance Required !\"}"
+const errPMTSTATUSReqMSG 		= "{\"code\":" +	errPMTSTATUSReq 		+	",\"message\":\"Permit Status Required !\"}"
+const errPMTCREATEDDATEReqMSG 	= "{\"code\":" +	errPMTCREATEDDATEReq	+	",\"message\":\"Permit Created Date Required!\"}"
+const errPMTCREATEDBYReqMSG 	= "{\"code\":" +	errPMTCREATEDBYReq 		+	",\"message\":\"Permit Created By Required !\"}"
+const errPMTIDExistMSG 			= "{\"code\":" +	errPMTIDExist 			+	",\"message\":\"Permit ID already exist !\"}"
+const errPMTIDNotExistMSG 		= "{\"code\":" +	errPMTIDNotExist 		+	",\"message\":\"Permit ID does not exist !\"}"
+ 
+const errSAIDReqMSG 	  	= "{\"code\":" +	errSAIDReq 			+	",\"message\":\"Check ID Required !\"}"
+const errSACOUNTERReqMSG 	= "{\"code\":" +	errSACOUNTERReq 	+	",\"message\":\"Test Counter Required !\"}"
+const errSAIDExistMSG 	  	= "{\"code\":" +	errSAIDExist 		+	",\"message\":\"Check ID already exists !\"}"
+const errSAIDNotExistMSG 	= "{\"code\":" +	errSAIDNotExist 	+	",\"message\":\"Check ID does not exist !\"}"
+
+// To get the certificate details
+func getTxCreatorInfo(stub shim.ChaincodeStubInterface) (string, []string, string, error) {
+	var mspid string
+	var err error
+	var empt []string
+	var cert *x509.Certificate
+	var orgs []string
+
+	mspid, err = cid.GetMSPID(stub)
+	if err != nil {
+		fmt.Printf("Error getting MSP identity: %s\n", err.Error())
+		return "", empt, "", err
+	}
+
+	cert, err = cid.GetX509Certificate(stub)
+	if err != nil {
+		fmt.Printf("Error getting client certificate: %s\n", err.Error())
+		return "", empt, "", err
+	}
+
+	if len(cert.Subject.Organization) > 0 {
+		orgs = cert.Subject.Organization
+	} else if len(cert.Issuer.Organization) > 0 {
+		orgs = cert.Issuer.Organization
+	}
+
+	// return mspid, cert.GetAttributeValue("o"), nil
+	// fmt.Println("MSP ID: '%s' | Organization: '%s'", mspid, cert.Issuer.Organization)
+	return mspid, orgs, cert.Subject.CommonName, nil
+}
+
+// ORG ACCESS CONTROL
+// Change according to org MSP ID and Organization Name
+func authenticateOrg1(mspID string, certON []string) bool {
+	org1Name := []string{"org1.gov.my", "org1.example.com", "moh1.moh.gov.my"}
+	org1MSP := []string{"org1msp", "moh1msp"}
+	var o1, o2, fin bool
+	for _, oN := range org1Name {
+		for _, orgName := range certON {
+			// fmt.Println(oN , orgName)
+			orgNameLower := strings.ToLower(orgName)
+			if oN == orgNameLower {
+				o1 = true
+			}
+		}
+	}
+
+	for _, oMSP := range org1MSP {
+		// fmt.Println(oMSP , mspID)
+		mspIDLower := strings.ToLower(mspID)
+		if oMSP == mspIDLower {
+			o2 = true
+		}
+	}
+
+	if o1 && o2 {
+		fin = true
+	}
+	return fin
+}
+
+func authenticateOrg2(mspID string, certON []string) bool {
+	org2Name := []string{"org2.gov.my", "moh2.moh.gov.my"}
+	org2MSP := []string{"org2msp", "moh2msp"}
+	var o1, o2, fin bool
+	for _, oN := range org2Name {
+		for _, orgName := range certON {
+			// fmt.Println(oN , orgName)
+			orgNameLower := strings.ToLower(orgName)
+			if oN == orgNameLower {
+				o1 = true
+			}
+		}
+	}
+
+	for _, oMSP := range org2MSP {
+		// fmt.Println(oMSP , mspID)
+		mspIDLower := strings.ToLower(mspID)
+		if oMSP == mspIDLower {
+			o2 = true
+		}
+	}
+
+	if o1 && o2 {
+		fin = true
+	}
+	return fin
+	// return (mspID == "Org2MSP") && (certCN[0] == "org2.gov.my")
+}
+
+func authenticateAllOrg(mspID string, certON []string) bool {
+	allOrgName := []string{"org1.gov.my", "org1.example.com", "org2.gov.my", "org3.gov.my"}
+	allOrgMSP := []string{"org1msp", "org2msp", "org3msp"}
+	var o1, o2, fin bool
+	for _, oN := range allOrgName {
+		for _, orgName := range certON {
+			// fmt.Println(oN , orgName)
+			orgNameLower := strings.ToLower(orgName)
+			if oN == orgNameLower {
+				o1 = true
+			}
+		}
+	}
+
+	for _, oMSP := range allOrgMSP {
+		// fmt.Println(oMSP , mspID)
+		mspIDLower := strings.ToLower(mspID)
+		if oMSP == mspIDLower {
+			o2 = true
+		}
+	}
+
+	if o1 && o2 {
+		fin = true
+	}
+	return fin
+}
+
+func authenticateAdminUser(mspID string, originator string) bool {
+	originators := []string{"admin@org1.gov.my", "admin@org1.example.com", "admin@org2.gov.my","admin@org3.gov.my","admin@moh1.moh.gov.my"}
+	org1MSP := []string{"org1msp", "org2msp", "org3msp", "moh1msp"}
+	var o1, o2, fin bool
+	for _, oN := range originators {
+		origin := strings.ToLower(originator)
+		if oN == origin {
+			o1 = true
+		}
+	}
+
+	for _, oMSP := range org1MSP {
+		// fmt.Println(oMSP , mspID)
+		mspIDLower := strings.ToLower(mspID)
+		if oMSP == mspIDLower {
+			o2 = true
+		}
+	}
+
+	if o1 && o2 {
+		fin = true
+	}
+	return fin
+}
+
+// END ACCESS CONTROL
+
+// func getEPCKey(stub shim.ChaincodeStubInterface, identity string, epcID string) (string, error) {
+// 	epcKey, err := stub.CreateCompositeKey("identity~epcID", []string{identity, epcID})
+// 	if err != nil {
+// 		return errMsg, err
+// 	}
+// 	return epcKey, nil
+// }
+
+// func getTIKey(stub shim.ChaincodeStubInterface, identity string, itemId string) (string, error) {
+// 	tiKey, err := stub.CreateCompositeKey("identity~itemId", []string{identity, itemId})
+// 	if err != nil {
+// 		return errMsg, err
+// 	}
+// 	return tiKey, nil
+// }
+
+// func getEventKey(stub shim.ChaincodeStubInterface, identity string, eventId string) (string, error) {
+// 	eventKey, err := stub.CreateCompositeKey("identity~eventId", []string{identity, eventId})
+// 	if err != nil {
+// 		return errMsg, err
+// 	}
+// 	return eventKey, nil
+// }
+
+// func getBizLocKey(stub shim.ChaincodeStubInterface, identity string, blID string) (string, error) {
+// 	bzKey, err := stub.CreateCompositeKey("identity~bizlocId", []string{identity, blID})
+// 	if err != nil {
+// 		return errMsg, err
+// 	}
+// 	return bzKey, nil
+// }
+
+func getAEOIDKey(identity string, AEOID string) (string) {
+	AEOKey := identity + "~" + AEOID
+
+	hash := sha256.Sum256([]byte(AEOKey))
+	return (hex.EncodeToString(hash[:]))
+}
+
+func getPermitIDKey(identity string, PMTID string) (string) {
+	permitKey := identity + "~" + PMTID
+
+	hash := sha256.Sum256([]byte(permitKey))
+	return (hex.EncodeToString(hash[:]))
+}
+
+func getSanityIDKey(identity string, SANITYID string) (string) {
+	sanityKey := identity + "~" + SANITYID
+
+	hash := sha256.Sum256([]byte(sanityKey))
+	return (hex.EncodeToString(hash[:]))
+}
+
+// func unmarshalTradeItem(tiID string) (TradeItem, error) {
+// 	param := "{\"itemID\":\"" + tiID + "\",\"identifier\":\"TRADEITEM\"}"
+// 	passed := TradeItem{}
+// 	err := json.Unmarshal([]byte(param), &passed)
+// 	if err != nil {
+// 		return passed, err
+// 	}
+// 	return passed, nil
+// }
+
+// func unmarshalEPC(epcID string) (EPC, error) {
+// 	param := "{\"epcID\":\"" + epcID + "\",\"identifier\":\"EPC\"}"
+// 	passed := EPC{}
+// 	err := json.Unmarshal([]byte(param), &passed)
+// 	if err != nil {
+// 		return passed, err
+// 	}
+// 	return passed, nil
+// }
+
+// func unmarshalEvent(evtID string) (Event, error) {
+// 	param := "{\"eventID\":\"" + evtID + "\",\"identifier\":\"EVENT\"}"
+// 	passed := Event{}
+// 	err := json.Unmarshal([]byte(param), &passed)
+// 	if err != nil {
+// 		return passed, err
+// 	}
+// 	return passed, nil
+// }
+
+// func unmarshalBizLoc(bizID string) (BizLocation, error) {
+// 	param := "{\"bizlocID\":\"" + bizID + "\",\"identifier\":\"BIZLOC\"}"
+// 	passed := BizLocation{}
+// 	err := json.Unmarshal([]byte(param), &passed)
+// 	if err != nil {
+// 		return passed, err
+// 	}
+// 	return passed, nil
+// }
+
+func unmarshalAEO(aeoID string) (AEOCompany, error) {
+	param := "{\"aeoId\":\"" + aeoID + "\",\"identifier\":\"AEO\"}"
+	passed := AEOCompany{}
+	err := json.Unmarshal([]byte(param), &passed)
+	if err != nil {
+		return passed, err
+	}
+	return passed, nil
+}
+
+func unmarshalPermit(pmtID string) (Permit, error) {
+	param := "{\"permitId\":\"" + pmtID + "\",\"identifier\":\"PERMIT\"}"
+	passed := Permit{}
+	err := json.Unmarshal([]byte(param), &passed)
+	if err != nil {
+		return passed, err
+	}
+	return passed, nil
+}
+
+func unmarshalSanity(sanityID string) (CheckSanity, error) {
+	param := "{\"checkId\":\"" + sanityID + "\",\"identifier\":\"SANITY\"}"
+	passed := CheckSanity{}
+	err := json.Unmarshal([]byte(param), &passed)
+	if err != nil {
+		return passed, err
+	}
+	return passed, nil
+}
+
+func isJSON(str string) bool {
+	var obj map[string]interface{}
+
+	if json.Unmarshal([]byte(str) , &obj) == nil {
+		return true;
+	}
+
+	return false;
+}
+
+func (m *MiTrace_Generic_Chaincode) getData(stub shim.ChaincodeStubInterface, creatorOrg string, creatorCertIssuer []string, args []string) pb.Response {
+
+	if !m.testMode && !(authenticateAllOrg(creatorOrg, creatorCertIssuer)) {
+		return shim.Error("Caller from neither Org! Access Denied !")
+	}
+
+	if len(args) != 1 {
+		return shim.Error(argsErr + "1")
+	}
+	if len(args[0]) <= 0 {
+		return shim.Error("The argument value cannot be empty, expecting any ID")
+	}	
+	
+	dataId := args[0]
+	dataAsBytes, err := stub.GetState(dataId)
+	if err != nil {
+		return shim.Error("Failed to get state for " + dataId)
+	}
+	if len(dataAsBytes) == 0 {
+		return shim.Error("No record found for " + dataId)
+	}
+	fmt.Printf("Query Response: %s\n", string(dataAsBytes))
+	return shim.Success(dataAsBytes)
+}
+
+func getQueryResultForQueryString(stub shim.ChaincodeStubInterface, queryString string) ([]byte, error) {
+
+	fmt.Printf("- getQueryResultForQueryString queryString:\n%s\n", queryString)
+
+	resultsIterator, err := stub.GetQueryResult(queryString)
+	if err != nil {
+		return nil, err
+	}
+	defer resultsIterator.Close()
+
+	buffer, err := constructQueryResponseFromIterator(resultsIterator)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Printf("- getQueryResultForQueryString queryResult:\n%s\n", buffer.String())
+
+	return buffer.Bytes(), nil
+}
+
+func (m *MiTrace_Generic_Chaincode) getDocumentBySelector(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+	if len(args) < 2 {
+		return shim.Error("Incorrect number of arguments. Expecting 2")
+	}
+
+	// Input sanitation
+	// fmt.Println("- start get ticket by selector -")
+	// if len(args[0]) <= 0 {
+	// 	return shim.Error("1st argument must be a non-empty string")
+	// }
+	// if len(args[1]) <= 0 {
+	// 	return shim.Error("2nd argument must be a non-empty string")
+	// }
+
+	selector := args[0]
+	key := args[1]
+
+	// queryString := fmt.Sprintf("{\"selector\":{\"docType\":\"ticket\",\"%s\":\"%s\"}}", selector, key)
+	queryString := fmt.Sprintf("{\"selector\":{\"%s\":\"%s\"}}", selector, key)
+	fmt.Println("queryString: ", queryString)
+	resultsIterator, err := stub.GetQueryResult(queryString)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	defer resultsIterator.Close()
+
+	buffer, err := constructQueryResponseFromIterator(resultsIterator)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	fmt.Printf("--- getDocumentBySelector queryResult:\n%s\n", buffer.String())
+	return shim.Success(buffer.Bytes())
+}
+
+func constructQueryResponseFromIterator(resultsIterator shim.StateQueryIteratorInterface) (*bytes.Buffer, error) {
+	// uID := args[0]
+
+	// fmt.Printf("- start getHistoryForID: %s\n", uID)
+
+	// resultsIterator, err := stub.GetHistoryForKey(uID)
+	// if err != nil {
+	// 	return shim.Error(err.Error())
+	// }
+	// defer resultsIterator.Close()
+	
+	var buffer bytes.Buffer
+	buffer.WriteString("[")
+
+	bArrayMemberAlreadyWritten := false
+	for resultsIterator.HasNext() {
+		queryResponse, err := resultsIterator.Next()
+		if err != nil {
+			return nil, err
+		}
+		fmt.Printf("next line")
+		if bArrayMemberAlreadyWritten == true {
+			buffer.WriteString(",")
+		}
+		buffer.WriteString("{\"Key\":")
+		buffer.WriteString("\"")
+		buffer.WriteString(queryResponse.Key)
+		buffer.WriteString("\"")
+
+		buffer.WriteString(", \"Record\":")
+		buffer.WriteString(string(queryResponse.Value))
+
+		buffer.WriteString(", \"TxId\":")
+		buffer.WriteString("\"")
+		buffer.WriteString(string(queryResponse.Key))
+		buffer.WriteString("\"")
+		buffer.WriteString("}")
+
+		bArrayMemberAlreadyWritten = true
+	}
+
+	buffer.WriteString("]")
+	return &buffer, nil
+}
+
+func constructQueryResponseFromIteratorCompositeKey(resultsIterator shim.StateQueryIteratorInterface, stub shim.ChaincodeStubInterface) (*bytes.Buffer, error) {
+	var buffer bytes.Buffer
+	buffer.WriteString("[")
+
+	bArrayMemberAlreadyWritten := false
+	for resultsIterator.HasNext() {
+		queryResponse, err := resultsIterator.Next()
+		if err != nil {
+			return nil, err
+		}
+		fmt.Printf("next line")
+
+		_, compositeKeyParts, err := stub.SplitCompositeKey(queryResponse.Key)
+		if err != nil {
+			fmt.Println("Error spliting Composite Key")
+		}
+
+		if bArrayMemberAlreadyWritten == true {
+			buffer.WriteString(",")
+		}
+		buffer.WriteString("{\"status\":")
+		buffer.WriteString("\"")
+		buffer.WriteString(compositeKeyParts[0])
+		buffer.WriteString("\"")
+
+		buffer.WriteString(", \"documentId\":")
+		buffer.WriteString(string(compositeKeyParts[1]))
+		buffer.WriteString("}")
+		bArrayMemberAlreadyWritten = true
+	}
+
+	buffer.WriteString("]")
+	return &buffer, nil
+}
+
+func (m *MiTrace_Generic_Chaincode) getHistoryForID(stub shim.ChaincodeStubInterface, creatorOrg string, creatorCertIssuer []string, args []string) pb.Response {
+
+	// if !m.testMode && !(authenticateOrg2(creatorOrg, creatorCertIssuer) || authenticateOrg1(creatorOrg, creatorCertIssuer)) {
+	// 	return shim.Error("Caller from neither Org! Access Denied !")
+	// }
+	if !m.testMode && !authenticateAllOrg(creatorOrg, creatorCertIssuer) {
+		// fmt.Println("Creator: ", creatorOrg)
+		// fmt.Println("Issuer: ", creatorCertIssuer)
+		return shim.Error(authAll)
+	}
+
+	if len(args) != 1 {
+		return shim.Error(argsErr + "1")
+	}
+
+	if len(args[0]) <= 0 {
+		return shim.Error("ID Required !")
+	}
+
+	uID := args[0]
+
+	fmt.Printf("- start getHistoryForID: %s\n", uID)
+
+	resultsIterator, err := stub.GetHistoryForKey(uID)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	defer resultsIterator.Close()
+
+	// buffer is a JSON array containing historic values for the marble
+	var buffer bytes.Buffer
+	buffer.WriteString("[")
+
+	bArrayMemberAlreadyWritten := false
+	for resultsIterator.HasNext() {
+		response, err := resultsIterator.Next()
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		// Add a comma before array members, suppress it for the first array member
+		if bArrayMemberAlreadyWritten == true {
+			buffer.WriteString(",")
+		}
+		buffer.WriteString("{\"TxId\":")
+		buffer.WriteString("\"")
+		buffer.WriteString(response.TxId)
+		buffer.WriteString("\"")
+
+		buffer.WriteString(", \"Value\":")
+		// if it was a delete operation on given key, then we need to set the
+		//corresponding value null. Else, we will write the response.Value
+		//as-is (as the Value itself a JSON marble)
+		if response.IsDelete {
+			buffer.WriteString("null")
+		} else {
+			buffer.WriteString(string(response.Value))
+		}
+
+		buffer.WriteString(", \"Timestamp\":")
+		buffer.WriteString("\"")
+		buffer.WriteString(time.Unix(response.Timestamp.Seconds, int64(response.Timestamp.Nanos)).String())
+		buffer.WriteString("\"")
+
+		buffer.WriteString(", \"IsDelete\":")
+		buffer.WriteString("\"")
+		buffer.WriteString(strconv.FormatBool(response.IsDelete))
+		buffer.WriteString("\"")
+
+		buffer.WriteString("}")
+		bArrayMemberAlreadyWritten = true
+	}
+	buffer.WriteString("]")
+
+	fmt.Printf(buffer.String())
+
+	return shim.Success(buffer.Bytes())
+}
+
+const authOrg1 = "Caller not a member of Org1. Access denied !"
+const authAllOrgAdmin = "Caller not an Admin of any Orgs. Access denied !"
+const authOrg2 = "Caller not a member of Org1 or Org2. Access denied !"
+const authAll = "Caller from neither Org. Access denied !"
+const argsErr = "Incorrect number of arguements. Expecting "
+const compKey = "CREATED COMPOSITE KEY!"
+const compKeySuccess = "COMPOSITE KEY PUTSTATE SUCCESS!"
+const errMsg = "Error: "
