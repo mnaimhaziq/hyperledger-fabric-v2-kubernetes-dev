@@ -1,14 +1,19 @@
 module github.com/mnaimhaziq/hyperledger-fabric-v2-kubernetes-dev/Mitrace-Chaincode
 
-go 1.12
+go 1.20
 
 require (
-	github.com/hyperledger/fabric-chaincode-go v0.0.0-20190823162523-04390e015b85
-	github.com/hyperledger/fabric-protos-go v0.0.0-20190821214336-621b908d5022
-	golang.org/x/crypto v0.0.0-20200109152110-61a87790db17 // indirect
-	golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7 // indirect
-	golang.org/x/sys v0.0.0-20190813064441-fde4db37ae7a // indirect
-	golang.org/x/text v0.3.2 // indirect
-	google.golang.org/appengine v1.4.0 // indirect
-	google.golang.org/genproto v0.0.0-20190819201941-24fa4b261c55 // indirect
+	github.com/hyperledger/fabric-chaincode-go v0.0.0-20230228194215-b84622ba6a7a
+	github.com/hyperledger/fabric-protos-go v0.3.0
+)
+
+require (
+	github.com/golang/protobuf v1.5.2 // indirect
+	golang.org/x/net v0.7.0 // indirect
+	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/text v0.7.0 // indirect
+	google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f // indirect
+	google.golang.org/grpc v1.53.0 // indirect
+	google.golang.org/protobuf v1.28.1 // indirect
+
 )
