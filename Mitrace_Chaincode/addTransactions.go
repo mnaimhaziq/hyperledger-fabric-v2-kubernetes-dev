@@ -13,9 +13,9 @@ import (
 func (m *MiTrace_Generic_Chaincode) addCompany(stub shim.ChaincodeStubInterface, creatorOrg string, creatorCertIssuer []string, args []string) pb.Response {
     fmt.Println("--- Start Add Company ---")
 
-    if !m.testMode && !authenticateAllOrg(creatorOrg, creatorCertIssuer) {
-        return shim.Error("Authentication failed")
-    }
+    // if !m.testMode && !authenticateAllOrg(creatorOrg, creatorCertIssuer) {
+    //     return shim.Error("Authentication failed")
+    // }
 
     if len(args) == 0 {
         fmt.Println("Argument must not be empty")
