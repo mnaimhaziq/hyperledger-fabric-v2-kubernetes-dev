@@ -1,4 +1,4 @@
-module github.com/mnaimhaziq/hyperledger-fabric-v2-kubernetes-dev/Mitrace-Chaincode
+module github.com/mnaimhaziq/hyperledger-fabric-v2-kubernetes-dev/Mitrace_Chaincode
 
 go 1.20
 
