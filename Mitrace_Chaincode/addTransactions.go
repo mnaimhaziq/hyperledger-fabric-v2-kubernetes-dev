@@ -10,7 +10,7 @@ import (
     pb "github.com/hyperledger/fabric-protos-go/peer"
 )
 
-func (m *MiTrace_Generic_Chaincode) addCompany(stub shim.ChaincodeStubInterface, creatorOrg string, creatorCertIssuer []string, args []string) pb.Response {
+func (m *MiTrace_Generic_Chaincode) addCompany(stub shim.ChaincodeStubInterface, args []string) pb.Response {
     fmt.Println("--- Start Add Company ---")
 
     // if !m.testMode && !authenticateAllOrg(creatorOrg, creatorCertIssuer) {
