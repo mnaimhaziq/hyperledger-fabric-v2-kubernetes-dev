@@ -13,7 +13,7 @@ import (
 func (m *MiTrace_Generic_Chaincode) addCompany(stub shim.ChaincodeStubInterface, creatorOrg string, creatorCertIssuer []string, args []string) pb.Response {
     fmt.Println("--- Start Add Company ---")
 
-    if !m.testMode && !authenticateAllOrg(creatorOrg, creatorCertIssuer) {
+    if !authenticateAllOrg(creatorOrg, creatorCertIssuer) {
         return shim.Error("Authentication failed")
     }
 
