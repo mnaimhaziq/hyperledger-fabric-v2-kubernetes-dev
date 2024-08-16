@@ -123,7 +123,7 @@ func authenticateAllOrg(mspID string, certON []string) bool {
 	var o1, o2, fin bool
 	for _, oN := range allOrgName {
 		for _, orgName := range certON {
-			// fmt.Println(oN , orgName)
+			fmt.Println(oN , orgName)
 			orgNameLower := strings.ToLower(orgName)
 			if oN == orgNameLower {
 				o1 = true
@@ -132,7 +132,7 @@ func authenticateAllOrg(mspID string, certON []string) bool {
 	}
 
 	for _, oMSP := range allOrgMSP {
-		// fmt.Println(oMSP , mspID)
+		fmt.Println(oMSP , mspID)
 		mspIDLower := strings.ToLower(mspID)
 		if oMSP == mspIDLower {
 			o2 = true
@@ -142,7 +142,7 @@ func authenticateAllOrg(mspID string, certON []string) bool {
 		// Print values of o1 and o2
 	fmt.Printf("o1: %v\n", o1)
 	fmt.Printf("o2: %v\n", o2)
-	
+
 	if o1 && o2 {
 		fin = true
 	}
