@@ -66,7 +66,7 @@ func (m *MiTrace_Generic_Chaincode) Invoke(stub shim.ChaincodeStubInterface) pb.
 		return m.getAllSanity(stub, creatorOrg, creatorCertIssuer)
 	case "addCompany":
 		fmt.Println("\nRunning addCompany func")
-		return m.addCompany(stub, args)
+		return m.addCompany(stub, creatorOrg, creatorCertIssuer, args)
 	case "updateCompany":
 		fmt.Println("\nRunning updateCompany func")
 		return m.updateCompany(stub, creatorOrg, creatorCertIssuer, invoker, args)
