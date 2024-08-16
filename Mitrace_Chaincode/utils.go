@@ -138,6 +138,8 @@ func authenticateAllOrg(mspID string, certON []string) bool {
 			o2 = true
 		}
 	}
+	Println("o1 : " + o1)
+	Println("o2 : " + o2)
 
 	if o1 && o2 {
 		fin = true
