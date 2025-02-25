@@ -1,6 +1,6 @@
 module github.com/mnaimhaziq/hyperledger-fabric-v2-kubernetes-dev/key-value-chaincode
 
-go 1.20
+go 1.16
 
 require github.com/hyperledger/fabric-contract-api-go v1.2.1
 
